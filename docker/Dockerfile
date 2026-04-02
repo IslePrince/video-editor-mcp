@@ -1,0 +1,48 @@
+# Build stage
+FROM golang:1.22-bookworm AS builder
+
+WORKDIR /app
+
+COPY go.mod ./
+RUN go mod download
+
+COPY . .
+RUN go mod tidy && CGO_ENABLED=0 go build -o /video-editor ./cmd/server
+
+# Runtime stage
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ffmpeg ca-certificates fontconfig curl unzip \
+        python3 python3-pip python3-venv && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Google Fonts individually from raw GitHub URLs
+RUN mkdir -p /usr/share/fonts/google && \
+    cd /usr/share/fonts/google && \
+    curl -sLO "https://github.com/google/fonts/raw/main/ofl/dmsans/DMSans%5Bopsz%2Cwght%5D.ttf" && \
+    curl -sLO "https://github.com/google/fonts/raw/main/ofl/dmsans/DMSans-Italic%5Bopsz%2Cwght%5D.ttf" && \
+    curl -sLO "https://github.com/google/fonts/raw/main/ofl/dmserifdisplay/DMSerifDisplay-Regular.ttf" && \
+    curl -sLO "https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf" && \
+    curl -sLO "https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth%2Cwght%5D.ttf" && \
+    curl -sLO "https://github.com/google/fonts/raw/main/ofl/opensans/OpenSans%5Bwdth%2Cwght%5D.ttf" && \
+    curl -sLO "https://github.com/google/fonts/raw/main/ofl/montserrat/Montserrat%5Bwght%5D.ttf" && \
+    fc-cache -f -v
+
+# Install OpenAI Whisper in a venv (CPU version by default)
+# For GPU support, override with nvidia/cuda base image and install torch+cuda
+RUN python3 -m venv /opt/whisper && \
+    /opt/whisper/bin/pip install --no-cache-dir --upgrade pip && \
+    /opt/whisper/bin/pip install --no-cache-dir openai-whisper
+
+# Make whisper available on PATH
+ENV PATH="/opt/whisper/bin:${PATH}"
+
+COPY --from=builder /video-editor /usr/local/bin/video-editor
+
+RUN mkdir -p /data /media
+
+EXPOSE 8090
+
+ENTRYPOINT ["video-editor"]

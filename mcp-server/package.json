@@ -1,0 +1,10 @@
+{
+  "name": "video-editor-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for the Video Editor API - enables LLM agents to control nonlinear video editing",
+  "main": "index.js",
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}

@@ -1,0 +1,32 @@
+name: video-editor
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gpu
+    ports:
+      - "8090:8090"
+    environment:
+      VE_PORT: "8090"
+      VE_STORAGE_ROOT: /data
+      VE_WORKER_COUNT: "2"
+      VE_MEDIA_PATH: /media
+      VE_WHISPER_MODEL: "${VE_WHISPER_MODEL:-medium}"
+      VE_ENABLE_GPU: "${VE_ENABLE_GPU:-auto}"
+    volumes:
+      - ve_data:/data
+      - type: bind
+        source: ${VE_MEDIA_PATH:-./test-media}
+        target: /media
+        read_only: false
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  ve_data:
