@@ -13,6 +13,7 @@ services:
       VE_MEDIA_PATH: /media
       VE_WHISPER_MODEL: "${VE_WHISPER_MODEL:-medium}"
       VE_ENABLE_GPU: "${VE_ENABLE_GPU:-auto}"
+      NVIDIA_DRIVER_CAPABILITIES: "compute,utility,video"
     volumes:
       - ve_data:/data
       - type: bind
@@ -25,7 +26,7 @@ services:
           devices:
             - driver: nvidia
               count: 1
-              capabilities: [gpu]
+              capabilities: [gpu, compute, utility]   # utility = nvidia-smi, compute = CUDA for Whisper
     restart: unless-stopped
 
 volumes:

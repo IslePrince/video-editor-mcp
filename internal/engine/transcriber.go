@@ -28,11 +28,14 @@ type TranscribeRequest struct {
 // DetectGPU checks if CUDA-capable GPU is available for Whisper.
 func DetectGPU() bool {
 	// Check if nvidia-smi is available and reports a GPU
-	out, err := exec.Command("nvidia-smi", "--query-gpu=name", "--format=csv,noheader").Output()
-	if err != nil {
-		return false
+	if out, err := exec.Command("nvidia-smi", "--query-gpu=name", "--format=csv,noheader").Output(); err == nil &&
+		strings.TrimSpace(string(out)) != "" {
+		return true
 	}
-	return strings.TrimSpace(string(out)) != ""
+	// nvidia-smi is only injected with the "utility" driver capability; what Whisper actually needs is CUDA in
+	// PyTorch, so ask that directly (works in WSL2 Docker where nvidia-smi may be absent).
+	out, err := exec.Command("python3", "-c", "import torch,sys; sys.stdout.write('1' if torch.cuda.is_available() else '0')").Output()
+	return err == nil && strings.TrimSpace(string(out)) == "1"
 }
 
 // DetectWhisper checks if whisper CLI is installed.
